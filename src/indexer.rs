@@ -4,7 +4,7 @@ use std::fs;
 use crate::parsing::{FileParsingError, read_file};
 use crate::lexer::Lexer;
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use serde_derive::{Serialize, Deserialize};
 
 pub type Document = PathBuf;
 

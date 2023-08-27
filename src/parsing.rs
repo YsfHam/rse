@@ -1,11 +1,11 @@
 use std::{io, path::Path, fs, fmt::Display};
 
-use html_parser::{Dom, Node};
+use tl;
 
 #[derive(Debug)]
 pub enum FileParsingError {
     ReadFileError(io::Error),
-    ParseHtmlError(html_parser::Error),
+    ParseHtmlError(tl::ParseError),
 
     UnknownExtensionError(String),
     NoExtensionError,
@@ -37,25 +37,18 @@ where
     P : AsRef<Path>
 {
     let html_content = fs::read_to_string(file_path).map_err(|err| FileParsingError::ReadFileError(err))?;
-
-    let html_dom = Dom::parse(&html_content)
-                        .map_err(|err| FileParsingError::ParseHtmlError(err))?;
-
     let mut html_text = String::new();
 
-    let mut dom_elements = vec![html_dom.children];
+    let html_dom = tl::parse(&html_content, Default::default()).map_err(|e| FileParsingError::ParseHtmlError(e))?;
 
-    while let Some(children) = dom_elements.pop() {
-        for node in children {
-            match node {
-                Node::Text(text) | Node::Comment(text)
-                 => {
-                     html_text.push_str(&text);
-                     html_text.push(' ');
-                 } 
-                
-                Node::Element(element) => dom_elements.push(element.children)
-            }
+    for node in html_dom.nodes() {
+        match node {
+            tl::Node::Raw(text) | tl::Node::Comment(text) 
+            => {
+                html_text.push_str(&text.as_utf8_str());
+                html_text.push(' ');
+            },
+            _ => {}
         }
     }
 
