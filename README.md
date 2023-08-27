@@ -1,1 +1,1 @@
-# Create an indexer with tf-idf algorithm
+# RSE an rust search engine
