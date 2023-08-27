@@ -43,7 +43,7 @@ where
 
     for node in html_dom.nodes() {
         match node {
-            tl::Node::Raw(text) | tl::Node::Comment(text) 
+            tl::Node::Raw(text)
             => {
                 html_text.push_str(&text.as_utf8_str());
                 html_text.push(' ');
@@ -69,8 +69,8 @@ where
 {
     if let Some(ext) = file_path.as_ref().extension() {
         match ext.to_string_lossy().as_ref() {
-            "txt" => return read_text_file(file_path),
-            "html" => return read_html_file(file_path),
+            "txt" | "md" => return read_text_file(file_path),
+            "html" | "xhtml" => return read_html_file(file_path),
             ext => return Err(FileParsingError::UnknownExtensionError(ext.to_string()))
         }
     }
