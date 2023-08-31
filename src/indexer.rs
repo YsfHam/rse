@@ -96,12 +96,12 @@ impl Indexer {
     }
 
     fn compute_idf_term(&self, term: &str) -> f32 {
-        let docs_number = self.documents.len() as f32;
+        let docs_number = self.documents.len() as f32 + 1.0;
 
         let docs_number_for_term = 
                 self.doc_freq.get(term)
                     .and_then(|x| Some(*x))
-                    .unwrap_or(1.0);
+                    .unwrap_or(0.0) + 1.0;
 
         (docs_number / docs_number_for_term).log10()
     }

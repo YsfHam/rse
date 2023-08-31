@@ -1,8 +1,11 @@
 use std::{env, process::ExitCode, io::{Write, BufWriter, BufReader}, env::Args, path::Path, fs::File};
 
+use tiny_http::{Server, Response};
+
 mod indexer;
 mod parsing;
 mod lexer;
+mod server;
 
 #[derive(Debug)]
 struct CmdArgs {
@@ -44,6 +47,33 @@ impl CmdArgs {
     }
 }
 
+fn load_indexer_data<P>(path: P) -> indexer::Indexer 
+where
+    P: AsRef<Path>
+{
+    let f = File::open(path).unwrap();
+
+    let reader = BufReader::new(f);
+
+    serde_json::from_reader(reader).unwrap()
+}
+
+fn index_dir_and_save<P>(dir_path: P, save_file_path: P) -> Result<indexer::Indexer, ()> 
+where
+    P: AsRef<Path>
+{
+    let mut indexer = Default::default();
+
+    indexer::index_dir(&dir_path, &mut indexer)?;
+
+    let f = File::create(&save_file_path).unwrap();        
+    let writer = BufWriter::new(f);
+
+    serde_json::to_writer(writer, &indexer).unwrap();
+
+    Ok(indexer)
+}
+
 fn main() -> ExitCode {
 
     let mut args = env::args();
@@ -65,27 +95,24 @@ fn main() -> ExitCode {
     };
 
     let indexer = if exists {
-        let f = File::open(&cmd_args.index_file_name).unwrap();
-
-        let reader = BufReader::new(f);
-
-        serde_json::from_reader(reader).unwrap()
+        load_indexer_data(&cmd_args.index_file_name)
+    }
+    else if let Ok(indexer) = index_dir_and_save(&cmd_args.docs_folder, &cmd_args.index_file_name) {
+        indexer
     }
     else {
-        let mut indexer = Default::default();
-
-        if let Err(_) = indexer::index_dir(&cmd_args.docs_folder, &mut indexer) {
-            return ExitCode::FAILURE;
-        }
-
-        let f = File::create(&cmd_args.index_file_name).unwrap();        
-        let writer = BufWriter::new(f);
-
-        serde_json::to_writer(writer, &indexer).unwrap();
-
-        indexer
+        return ExitCode::FAILURE;
     };
 
+    server::start_server("127.0.0.1:8080", &indexer).unwrap();
+
+    
+
+    ExitCode::SUCCESS
+}
+
+
+fn run_search(indexer: &indexer::Indexer) {
     loop {
         let mut buffer = String::new();
 
@@ -110,6 +137,4 @@ fn main() -> ExitCode {
             println!("{} ===> {}", doc.display(), score);
         }
     }
-
-    ExitCode::SUCCESS
 }
